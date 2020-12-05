@@ -1,0 +1,5 @@
+---
+# tasks file for jonathan-setup
+
+- include: basic_software.yml
+- include: users.yml

@@ -1,0 +1,84 @@
+---
+
+- name: Create default user
+  user:
+    name: "{{ default_user }}"
+    groups: 
+      - docker
+      - gpio
+      - sudo
+      - adm 
+      - dialout 
+      - cdrom
+      - audio
+      - video
+      - plugdev
+      - games 
+      - users
+      - input
+      - netdev
+      - spi
+      - i2c
+    shell: /bin/zsh
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+    ssh_key_file: .ssh/id_rsa
+    password: "{{ default_user_password }}"
+
+- name: Push host's authorized key on default user
+  ansible.posix.authorized_key:
+    user: "{{ default_user }}"
+    state: present
+    key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"
+
+- name: Add user to passwordless sudoers
+  template:
+    src: nopasswd
+    dest: /etc/sudoers.d/"{{default_user}}"-nopasswd
+
+- name: Checkout ohmyzsh
+  command: 'git clone -c core.autocrlf=input --depth=1 https://github.com/robbyrussell/oh-my-zsh.git .oh-my-zsh'
+  args:
+    chdir: '~{{ default_user }}'
+    creates: '~{{ default_user }}/.oh-my-zsh'
+
+- name: set permissions of oh-my-zsh for users
+  become: yes
+  file:
+    path: '~{{ default_user }}/.oh-my-zsh'
+    # Prevent the cloned repository from having insecure permissions. Failing to do
+    # so causes compinit() calls to fail with "command not found: compdef" errors
+    # for users with insecure umasks (e.g., "002", allowing group writability).
+    mode: 'go-w'
+    owner: "{{ default_user }}"
+    group: "{{ default_user }}"
+    recurse: yes
+
+- name: Checkout dotfiles
+  git:
+    repo: 'https://github.com/jphart/dotfiles.git'
+    dest: "/home/{{ default_user }}/dotfiles"
+
+- name: set permissions of dotfiles
+  file:
+    path: "/home/{{ default_user }}/dotfiles"
+    mode: 'go-w'
+    owner: "{{ default_user }}"
+    group: "{{ default_user }}"
+    recurse: no
+
+- name: Remove default .zshrc 
+  file:
+    path: "/home/{{ default_user }}/.zshrc"
+    state: absent
+
+- name: Link dotfiles to ~/
+  file: 
+    src: "/home/{{ default_user }}/dotfiles/{{ item }}"
+    dest: "/home/{{ default_user }}/{{ item }}"
+    owner: "{{ default_user }}"
+    group: "{{ default_user }}"
+    state: link
+  with_items:
+    - .bash_profile
+    - .zshrc

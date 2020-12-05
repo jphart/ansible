@@ -1,0 +1,22 @@
+---
+
+- name: Update all packages to their latest version
+  apt:
+    name: "*"
+    state: latest
+    update_cache: yes
+    force_apt_get: yes
+
+- name: Install a list of packages
+  apt:
+    pkg:
+    - git
+    - vim
+    - wget
+    - zsh
+    - htop
+    - tree
+
+- name: Remove dependencies that are no longer required
+  apt:
+    autoremove: yes

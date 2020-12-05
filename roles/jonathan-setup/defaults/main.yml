@@ -1,0 +1,5 @@
+---
+# defaults file for jonathan-setup
+
+default_user: jonathan
+default_user_password: abc123
